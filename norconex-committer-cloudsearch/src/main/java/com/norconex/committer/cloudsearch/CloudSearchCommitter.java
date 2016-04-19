@@ -274,6 +274,11 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
 
     private JSONObject buildJsonDocumentAddition(
             Properties fields, String reference) {
+    	if (fields.isEmpty()) {
+    	    throw new CommitterException("Attempting to commit an empty"
+    	            + " document.");
+    	}
+    	
         Map<String, Object> documentMap = new HashMap<>();
         documentMap.put("type", "add");
         documentMap.put("id", reference);
