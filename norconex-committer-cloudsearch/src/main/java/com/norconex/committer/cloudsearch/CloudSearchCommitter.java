@@ -64,7 +64,11 @@ import com.norconex.commons.lang.map.Properties;
  * 
  * <pre>
  *  &lt;committer class="com.norconex.committer.cloudsearch.CloudSearchCommitter"&gt;
+ *  
+ *      &lt;-- Mandatory: --&gt;
  *      &lt;documentEndpoint&gt;(CloudSearch document endpoint)&lt;/documentEndpoint&gt;
+ *      
+ *      &lt;-- Mandatory if not configured elsewhere: --&gt;
  *      &lt;accessKey&gt;
  *         (Optional CloudSearch access key. Will be taken from environment 
  *          when blank.)
@@ -74,18 +78,14 @@ import com.norconex.commons.lang.map.Properties;
  *          when blank.)
  *      &lt;/secretKey&gt;
  *      
+ *      &lt;-- Optional settings: --&gt;
  *      &lt;sourceReferenceField keep="[false|true]"&gt;
  *         (Optional name of field that contains the document reference, when 
  *         the default document reference is not used.  The reference value
- *         will be mapped to CloudSearch "id" field, or the 
- *         "targetReferenceField" specified.
+ *         will be mapped to CloudSearch "id" field.
  *         Once re-mapped, this metadata source field is 
  *         deleted, unless "keep" is set to <code>true</code>.)
  *      &lt;/sourceReferenceField&gt;
- *      &lt;targetReferenceField&gt;
- *         (Name of CloudSearch target field where the store a document unique 
- *         identifier (idSourceField).  If not specified, default is "id".) 
- *      &lt;/targetReferenceField&gt;
  *      &lt;sourceContentField keep="[false|true]"&gt;
  *         (If you wish to use a metadata field to act as the document 
  *         "content", you can specify that field here.  Default 
@@ -122,11 +122,12 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
     private static final Logger LOG = 
             LogManager.getLogger(CloudSearchCommitter.class);
     
-    /** Default CloudSearch ID field */
-    public static final String DEFAULT_COULDSEARCH_ID_FIELD = "id";
+    /** CloudSearch mandatory ID field */
+    public static final String COULDSEARCH_ID_FIELD = "id";
     /** Default CloudSearch content field */
     public static final String DEFAULT_COULDSEARCH_CONTENT_FIELD = "content";
     
+    private static final String TEMP_TARGET_ID_FIELD = "__nx.cloudsearch.id";
     
     private AmazonCloudSearchDomainClient awsClient;
     private boolean needNewAwsClient = true;
@@ -143,7 +144,7 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         super();
         this.documentEndpoint = documentEndpoint;
         setTargetContentField(DEFAULT_COULDSEARCH_CONTENT_FIELD);
-        setTargetReferenceField(DEFAULT_COULDSEARCH_ID_FIELD);
+        super.setTargetReferenceField(TEMP_TARGET_ID_FIELD);
     }
     
     /**
@@ -201,6 +202,19 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         this.secretKey = secretKey;
         needNewAwsClient = true;
     }
+    
+    /**
+     * This method is not supported and will throw an 
+     * {@link UnsupportedOperationException} if invoked.  With CloudSearch,
+     * the target field for a document unique id is always "id".
+     * @param targetReferenceField the target field
+     */
+    @Override
+    public void setTargetReferenceField(String targetReferenceField) {
+        throw new UnsupportedOperationException(
+                "Target reference field is always \"id\" "
+              + "and cannot be changed.");
+    }
 
     @Override
     protected void commitBatch(List<ICommitOperation> batch) {        
@@ -211,8 +225,7 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         for (ICommitOperation op : batch) {
             if (op instanceof IAddOperation) {
                documentBatch.add(buildJsonDocumentAddition(
-                       ((IAddOperation) op).getMetadata(),
-                       ((IAddOperation) op).getReference()));
+                       ((IAddOperation) op).getMetadata()));
             } else if (op instanceof IDeleteOperation) {
                 documentBatch.add(buildJsonDocumentDeletion(
                         ((IDeleteOperation) op).getReference()));
@@ -272,16 +285,16 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         needNewAwsClient = false;
     }
 
-    private JSONObject buildJsonDocumentAddition(
-            Properties fields, String reference) {
+    private JSONObject buildJsonDocumentAddition(Properties fields) {
     	if (fields.isEmpty()) {
-    	    throw new CommitterException("Attempting to commit an empty"
-    	            + " document.");
+    	    throw new CommitterException(
+    	            "Attempting to commit an empty document.");
     	}
     	
         Map<String, Object> documentMap = new HashMap<>();
         documentMap.put("type", "add");
-        documentMap.put("id", reference);
+        documentMap.put("id", fields.getString(TEMP_TARGET_ID_FIELD));
+        fields.remove(TEMP_TARGET_ID_FIELD);
         Map<String, Object> fieldMap = new HashMap<>();
         for (String key : fields.keySet()) {
             List<String> values = fields.getStrings(key);
