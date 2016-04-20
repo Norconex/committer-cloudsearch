@@ -82,7 +82,7 @@ import com.norconex.commons.lang.map.Properties;
  *      &lt;sourceReferenceField keep="[false|true]"&gt;
  *         (Optional name of field that contains the document reference, when 
  *         the default document reference is not used.  The reference value
- *         will be mapped to CloudSearch "id" field.
+ *         will be mapped to CloudSearch "id" field, which is mandatory.
  *         Once re-mapped, this metadata source field is 
  *         deleted, unless "keep" is set to <code>true</code>.)
  *      &lt;/sourceReferenceField&gt;
