@@ -7,7 +7,7 @@
   </properties>
   <body>
 
-    <release version="1.0.0-SNAPSHOT" date="2016-04-28" description="Initial release">
+    <release version="1.0.0" date="2016-04-28" description="Initial release">
       <action dev="essiembre,EH-Khiari" type="add">
         Initial release.
       </action>
