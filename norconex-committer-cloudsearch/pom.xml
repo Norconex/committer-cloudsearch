@@ -19,7 +19,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.norconex.collectors</groupId>
   <artifactId>norconex-committer-cloudsearch</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <name>Norconex Committer CloudSearch</name>
   <description>Amazon CloudSaerch implementation of Norconex Committer.</description>
   
@@ -62,19 +62,22 @@
         <artifactId>json</artifactId>
         <version>20160212</version>
     </dependency>
-    <!-- 
-    <dependency>
-        <groupId>commons-codec</groupId>
-        <artifactId>commons-codec</artifactId>
-        <version>1.10</version>
-    </dependency>
-     -->
     <dependency>
         <groupId>com.norconex.collectors</groupId>
         <artifactId>norconex-committer-core</artifactId>
-        <version>2.0.4-SNAPSHOT</version>
-    </dependency>   
+        <version>2.0.3</version>
+    </dependency>
   </dependencies>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.norconex.commons</groupId>
+        <artifactId>norconex-commons-lang</artifactId>
+        <version>1.9.0</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <build>
     <resources>
