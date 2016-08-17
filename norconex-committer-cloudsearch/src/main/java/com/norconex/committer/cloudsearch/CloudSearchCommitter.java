@@ -211,9 +211,10 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
      */
     @Override
     public void setTargetReferenceField(String targetReferenceField) {
-        throw new UnsupportedOperationException(
-                "Target reference field is always \"id\" "
-              + "and cannot be changed.");
+        if (StringUtils.isNotBlank(targetReferenceField)) {
+            LOG.warn("Target reference field is always \"id\" "
+                    + "and cannot be changed.");
+        }
     }
 
     @Override
