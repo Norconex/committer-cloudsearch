@@ -8,6 +8,9 @@
   <body>
 
     <release version="1.0.1-SNAPSHOT" date="2016-??-??" description="Bugfix release">
+      <action dev="essiembre" type="update">
+        Dependency update: Norconex Commons Lang 1.9.1.
+      </action>
       <action dev="essiembre" type="fix">
         Fixed wrongful UnsupportedOperationException being thrown.
       </action>
