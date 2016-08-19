@@ -19,7 +19,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.norconex.collectors</groupId>
   <artifactId>norconex-committer-cloudsearch</artifactId>
-  <version>1.0.1-SNAPSHOT</version>
+  <version>1.0.1</version>
   <name>Norconex Committer CloudSearch</name>
   <description>Amazon CloudSaerch implementation of Norconex Committer.</description>
   
