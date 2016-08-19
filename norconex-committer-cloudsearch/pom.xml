@@ -19,7 +19,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.norconex.collectors</groupId>
   <artifactId>norconex-committer-cloudsearch</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <name>Norconex Committer CloudSearch</name>
   <description>Amazon CloudSaerch implementation of Norconex Committer.</description>
   
@@ -74,8 +74,13 @@
       <dependency>
         <groupId>com.norconex.commons</groupId>
         <artifactId>norconex-commons-lang</artifactId>
-        <version>1.9.0</version>
+        <version>1.9.1</version>
       </dependency>
+      <dependency>
+        <groupId>org.apache.httpcomponents</groupId>
+        <artifactId>httpclient</artifactId>
+        <version>4.5.2</version>
+      </dependency>    
     </dependencies>
   </dependencyManagement>
 

@@ -7,6 +7,15 @@
   </properties>
   <body>
 
+    <release version="1.0.1" date="2016-08-19" description="Bugfix release">
+      <action dev="essiembre" type="update">
+        Dependency update: Norconex Commons Lang 1.9.1.
+      </action>
+      <action dev="essiembre" type="fix">
+        Fixed wrongful UnsupportedOperationException being thrown.
+      </action>
+    </release>
+
     <release version="1.0.0" date="2016-04-28" description="Initial release">
       <action dev="essiembre,EH-Khiari" type="add">
         Initial release.
