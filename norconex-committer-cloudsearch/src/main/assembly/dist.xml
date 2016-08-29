@@ -24,6 +24,13 @@
 
   <fileSets>
     <fileSet>
+      <directory>${basedir}/src/main/scripts</directory>
+      <includes>
+        <include>**</include>
+      </includes>
+      <outputDirectory>/</outputDirectory>
+    </fileSet>
+    <fileSet>
       <directory>${basedir}/src/main/assembly/</directory>
       <includes>
         <include>*.txt</include>

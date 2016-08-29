@@ -57,7 +57,7 @@ import com.norconex.commons.lang.map.Properties;
  * CloudSearch. For enhanced security, it is best to use one of the methods
  * described in {@link DefaultAWSCredentialsProviderChain} for setting them
  * (environment variables, system properties, profile file, etc). 
- * Do not explicitely set "accessKey" and "secretKey" on this class relying on
+ * Do not explicitly set "accessKey" and "secretKey" on this class relying on
  * safer methods.
  * 
  * <h3>XML configuration usage:</h3>
@@ -211,7 +211,7 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
      */
     @Override
     public void setTargetReferenceField(String targetReferenceField) {
-        if (StringUtils.isNotBlank(targetReferenceField)) {
+        if (!TEMP_TARGET_ID_FIELD.equals(targetReferenceField)) {
             LOG.warn("Target reference field is always \"id\" "
                     + "and cannot be changed.");
         }
