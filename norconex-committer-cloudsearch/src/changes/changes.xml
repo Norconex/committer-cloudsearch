@@ -7,6 +7,16 @@
   </properties>
   <body>
 
+    <release version="1.1.1" date="2017-??-??" description="Maintenance release">
+      <action dev="essiembre" type="add">
+        Added schema-based XML configuration validation.
+      </action>
+      <action dev="essiembre" type="update">
+        Maven dependency updates: Norconex Commons Lang 1.13.0,
+        Norconex Committer Core 2.0.6.
+      </action>
+    </release>
+
     <release version="1.1.0" date="2016-08-29" description="Feature release">
       <action dev="essiembre" type="add">
         Now ships with new install script that automates copying of dependent 
