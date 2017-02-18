@@ -58,7 +58,7 @@ public class CloudSearchCommitterTest {
         appender.startCountingFor(XMLConfigurationUtil.class, Level.WARN);
         try (Reader r = new InputStreamReader(getClass().getResourceAsStream(
                 ClassUtils.getShortClassName(getClass()) + ".xml"))) {
-            XMLConfigurationUtil.loadFromXML(new CloudSearchCommitter(), r);
+            XMLConfigurationUtil.newInstance(r);
         } finally {
             appender.stopCountingFor(XMLConfigurationUtil.class);
         }
