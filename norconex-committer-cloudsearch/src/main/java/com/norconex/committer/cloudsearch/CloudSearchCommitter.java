@@ -1,4 +1,4 @@
-/* Copyright 2016 Norconex Inc.
+/* Copyright 2016-2017 Norconex Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,19 +47,26 @@ import com.norconex.committer.core.IAddOperation;
 import com.norconex.committer.core.ICommitOperation;
 import com.norconex.committer.core.IDeleteOperation;
 import com.norconex.commons.lang.map.Properties;
+import com.norconex.commons.lang.time.DurationParser;
 
 /**
  * <p>
  * Commits documents to Amazon CloudSearch.
  * </p>
  * <h3>Authentication:</h3>
+ * <p>
  * An access key and security key are required to connect to interact with 
  * CloudSearch. For enhanced security, it is best to use one of the methods
  * described in {@link DefaultAWSCredentialsProviderChain} for setting them
  * (environment variables, system properties, profile file, etc). 
- * Do not explicitly set "accessKey" and "secretKey" on this class relying on
- * safer methods.
- * 
+ * Do not explicitly set "accessKey" and "secretKey" on this class if you 
+ * want to rely on safer methods.
+ * </p>
+ * <p>
+ * As of 1.1.1, XML configuration entries expecting millisecond durations
+ * can be provided in human-readable format (English only), as per 
+ * {@link DurationParser} (e.g., "5 minutes and 30 seconds" or "5m30s").
+ * </p> 
  * <h3>XML configuration usage:</h3>
  * 
  * <pre>
@@ -109,7 +116,7 @@ import com.norconex.commons.lang.map.Properties;
  *          (Max retries upon commit failures. Default is 0.)
  *      &lt;/maxRetries&gt;
  *      &lt;maxRetryWait&gt;
- *          (Max delay between retries. Default is 0.)
+ *          (Max delay in milliseconds between retries. Default is 0.)
  *      &lt;/maxRetryWait&gt;
  *  &lt;/committer&gt;
  * </pre>
