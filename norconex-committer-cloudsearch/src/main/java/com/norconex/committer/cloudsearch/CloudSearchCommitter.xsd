@@ -23,9 +23,10 @@
       <xs:complexContent> 
         <xs:extension base="AbstractMappedCommitter">
           <xs:all>
-            <xs:element name="documentEndpoint" type="nonEmptyString" minOccurs="1" maxOccurs="1" />
-            <xs:element name="accessKey" type="nonEmptyString" minOccurs="1" maxOccurs="1" />
-            <xs:element name="secretKey" type="nonEmptyString" minOccurs="1" maxOccurs="1" />
+            <xs:element name="serviceEndpoint" type="nonEmptyString" minOccurs="1" maxOccurs="1" />
+            <xs:element name="signingRegion" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
+            <xs:element name="accessKey" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
+            <xs:element name="secretKey" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
           </xs:all>
         </xs:extension> 
       </xs:complexContent>

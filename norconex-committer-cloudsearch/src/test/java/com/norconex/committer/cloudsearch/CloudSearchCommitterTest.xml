@@ -17,11 +17,15 @@
 -->
 
 <committer class="com.norconex.committer.cloudsearch.CloudSearchCommitter">
-  <documentEndpoint>endpoint</documentEndpoint>
+  <serviceEndpoint>endpoint</serviceEndpoint>
+  <signingRegion>region</signingRegion>
   <accessKey>access</accessKey>
   <secretKey>secret</secretKey>
   <sourceReferenceField keep="true">sourceReferenceField</sourceReferenceField>
+  <!--
+    Target reference field is always ID so no need to test: 
   <targetReferenceField>targetReferenceField</targetReferenceField>
+   -->
   <sourceContentField keep="true">sourceContentField</sourceContentField>
   <targetContentField>targetContentField</targetContentField>
   <commitBatchSize>10</commitBatchSize>

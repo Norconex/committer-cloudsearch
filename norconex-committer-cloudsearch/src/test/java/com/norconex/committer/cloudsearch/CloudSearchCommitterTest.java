@@ -37,7 +37,8 @@ public class CloudSearchCommitterTest {
         CloudSearchCommitter c = new CloudSearchCommitter();
         c.setAccessKey("accessKey");
         c.setSecretKey("secretKey");
-        c.setDocumentEndpoint("documentEndpoint");
+        c.setServiceEndpoint("serviceEndpoint");
+        c.setSigningRegion("signingRegion");
         c.setCommitBatchSize(10);
         c.setKeepSourceContentField(true);
         c.setKeepSourceReferenceField(true);
@@ -47,7 +48,8 @@ public class CloudSearchCommitterTest {
         c.setSourceContentField("sourceContentField");
         c.setSourceReferenceField("sourceReferenceField");
         c.setTargetContentField("targetContentField");
-        c.setTargetReferenceField("targetReferenceField");
+        // always "id so no point setting the following:
+        //c.setTargetReferenceField("targetReferenceField");
         System.out.println("Writing/Reading this: " + c);
         XMLConfigurationUtil.assertWriteRead(c);
     }
