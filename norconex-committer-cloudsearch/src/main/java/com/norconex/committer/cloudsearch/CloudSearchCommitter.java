@@ -20,7 +20,9 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
@@ -36,6 +38,7 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
@@ -75,10 +78,10 @@ import com.norconex.commons.lang.time.DurationParser;
  * <pre>
  *  &lt;committer class="com.norconex.committer.cloudsearch.CloudSearchCommitter"&gt;
  *  
- *      &lt;-- Mandatory: --&gt;
+ *      &lt;!-- Mandatory: --&gt;
  *      &lt;serviceEndpoint&gt;(CloudSearch service endpoint)&lt;/serviceEndpoint&gt;
  *      
- *      &lt;-- Mandatory if not configured elsewhere: --&gt;
+ *      &lt;!-- Mandatory if not configured elsewhere: --&gt;
  *      &lt;accessKey&gt;
  *         (Optional CloudSearch access key. Will be taken from environment 
  *          when blank.)
@@ -88,7 +91,7 @@ import com.norconex.commons.lang.time.DurationParser;
  *          when blank.)
  *      &lt;/secretKey&gt;
  *      
- *      &lt;-- Optional settings: --&gt;
+ *      &lt;!-- Optional settings: --&gt;
  *      &lt;signingRegion&gt;(CloudSearch signing region)&lt;/signingRegion&gt;
  *      &lt;sourceReferenceField keep="[false|true]"&gt;
  *         (Optional name of field that contains the document reference, when 
@@ -133,6 +136,13 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
     private static final Logger LOG = 
             LogManager.getLogger(CloudSearchCommitter.class);
     
+    /** 
+     * CouldSearch mandatory field pattern. Characters not matching 
+     * the pattern will be replaced by an underscore.
+     */
+    public static final Pattern FIELD_PATTERN = Pattern.compile(
+            "[a-z0-9][a-z0-9_]{0,63}$");
+    
     /** CloudSearch mandatory ID field */
     public static final String COULDSEARCH_ID_FIELD = "id";
     /** Default CloudSearch content field */
@@ -152,12 +162,13 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         this(null);
     }
     public CloudSearchCommitter(String serviceEndpoint) {
-        
+        this(serviceEndpoint, null);
     }
     
     public CloudSearchCommitter(String serviceEndpoint, String signingRegion) {
         super();
         this.serviceEndpoint = serviceEndpoint;
+        this.signingRegion = signingRegion;
         setTargetContentField(DEFAULT_COULDSEARCH_CONTENT_FIELD);
         super.setTargetReferenceField(TEMP_TARGET_ID_FIELD);
     }
@@ -314,9 +325,11 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
             LOG.info(result.getAdds() + " Add requests and "
                     + result.getDeletes() + " Delete requests "
                     + "sent to the AWS CloudSearch domain."); 
-        } catch (IOException e) {
+        } catch (IOException | AmazonServiceException e) {
+            LOG.error("CloudSearch error: " + e.getMessage());
             throw new CommitterException(
-                    "Could not upload request to CloudSearch.", e);
+                    "Could not upload request to CloudSearch: "
+                            + e.getMessage(), e);
         }
     }
     
@@ -351,7 +364,8 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
     	
         Map<String, Object> documentMap = new HashMap<>();
         documentMap.put("type", "add");
-        documentMap.put("id", fields.getString(TEMP_TARGET_ID_FIELD));
+        documentMap.put(COULDSEARCH_ID_FIELD, 
+                fields.getString(TEMP_TARGET_ID_FIELD));
         fields.remove(TEMP_TARGET_ID_FIELD);
         Map<String, Object> fieldMap = new HashMap<>();
         for (String key : fields.keySet()) {
@@ -361,22 +375,39 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
                   size > 1 : non-empty multi-valued field
                   size = 0 : empty field
                 */  
+                String fixedKey = fixKey(key);
                 if (values.size() == 1) {
-                    fieldMap.put(key, values.get(0));
+                    fieldMap.put(fixedKey, values.get(0));
                 } else if (values.size() > 1){
-                    fieldMap.put(key, values);
+                    fieldMap.put(fixedKey, values);
                 } else {
-                    fieldMap.put(key, "");
+                    fieldMap.put(fixedKey, "");
                 }
             }
         }    
         documentMap.put("fields", fieldMap);
         return new JSONObject(documentMap);
     }
+    
+    private String fixKey(String key) {
+        if (FIELD_PATTERN.matcher(key).matches()) {
+            return key;
+        }
+        String fix = key;
+        fix = fix.replaceFirst("^[^a-zA-Z0-9]", "");
+        fix = StringUtils.truncate(fix, 63);
+        fix = fix.replaceAll("[^a-zA-Z0-9_]", "_");
+        fix = fix.toLowerCase(Locale.ENGLISH);
+        LOG.warn("\"" + key + "\" field renamed to \"" + fix + "\" as it "
+                + "does not match CloudSearch required pattern: " 
+                + FIELD_PATTERN);
+        return fix;
+    }
+    
     private JSONObject buildJsonDocumentDeletion(String reference) {
         Map<String, Object> documentMap = new HashMap<>();
         documentMap.put("type", "delete");
-        documentMap.put("id", reference);
+        documentMap.put(COULDSEARCH_ID_FIELD, reference);
         return new JSONObject(documentMap);
     }
 
