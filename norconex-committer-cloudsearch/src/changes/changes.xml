@@ -7,7 +7,7 @@
   </properties>
   <body>
 
-    <release version="1.2.0" date="2017-05-11" description="Maintenance release">
+    <release version="1.2.0" date="2017-05-11" description="Feature release">
       <action dev="essiembre" type="add">
         Added schema-based XML configuration validation.
       </action>
