@@ -7,6 +7,31 @@
   </properties>
   <body>
 
+    <release version="1.2.0" date="2017-05-11" description="Feature release">
+      <action dev="essiembre" type="add">
+        Added schema-based XML configuration validation.
+      </action>
+      <action dev="essiembre" type="add">
+        Now distributed with utility scripts.
+      </action>
+      <action dev="essiembre" type="add">
+        New optional "signingRegion" configuraiton option.
+      </action>
+      <action dev="essiembre" type="update">
+        The "documentEndpoint" configuration has been renamed "serviceEndpoint"
+        to better match AWS naming.
+      </action>
+      <action dev="essiembre" type="update">
+        XML configuration entries expecting millisecond durations
+        can now be provided in human-readable format 
+        (e.g., "5 minutes and 30 seconds" or "5m30s").
+      </action>
+      <action dev="essiembre" type="update">
+        Maven dependency updates: Norconex Commons Lang 1.13.0,
+        Norconex Committer Core 2.1.0, AWS CloudSearch SDK 1.11.123.
+      </action>
+    </release>
+
     <release version="1.1.0" date="2016-08-29" description="Feature release">
       <action dev="essiembre" type="add">
         Now ships with new install script that automates copying of dependent 
