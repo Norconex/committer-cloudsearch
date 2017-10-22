@@ -16,7 +16,7 @@ package com.norconex.committer.cloudsearch;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +28,6 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
 import org.apache.commons.configuration.XMLConfiguration;
-import org.apache.commons.lang3.CharEncoding;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -52,8 +51,10 @@ import com.norconex.committer.core.CommitterException;
 import com.norconex.committer.core.IAddOperation;
 import com.norconex.committer.core.ICommitOperation;
 import com.norconex.committer.core.IDeleteOperation;
+import com.norconex.commons.lang.StringUtil;
 import com.norconex.commons.lang.map.Properties;
 import com.norconex.commons.lang.time.DurationParser;
+import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
 
 /**
  * <p>
@@ -68,11 +69,24 @@ import com.norconex.commons.lang.time.DurationParser;
  * Do not explicitly set "accessKey" and "secretKey" on this class if you 
  * want to rely on safer methods.
  * </p>
+ * <h3>CloudSearch ID limitations:</h3>
  * <p>
- * As of 1.1.1, XML configuration entries expecting millisecond durations
- * can be provided in human-readable format (English only), as per 
- * {@link DurationParser} (e.g., "5 minutes and 30 seconds" or "5m30s").
- * </p> 
+ * As of this writing, CloudSearch has a 128 characters limitation 
+ * on its "id" field. In addition, certain characters are not allowed.
+ * By default, an error will result from trying to submit
+ * documents with an invalid ID. <b>As of 1.3.0</b>, you can get around this by
+ * setting {@link #setFixBadIds(boolean)} to <code>true</code>.  It will
+ * truncate references that are too long and append a hash code to it
+ * representing the truncated part.  It will also convert invalid
+ * characters to underscore.  This approach is not 100% 
+ * collision-free (uniqueness), but it should safely cover the vast 
+ * majority of cases. 
+ * </p>
+ * <p>
+ * If you want to keep the original (non-truncated) URL, make sure you set 
+ * {@link #setKeepSourceReferenceField(boolean)} to <code>true</code>.
+ * </p>
+ * 
  * <h3>XML configuration usage:</h3>
  * 
  * <pre>
@@ -92,6 +106,9 @@ import com.norconex.commons.lang.time.DurationParser;
  *      &lt;/secretKey&gt;
  *      
  *      &lt;!-- Optional settings: --&gt;
+ *      &lt;fixBadIds&gt;
+ *         [false|true](Forces references to fit into a CloudSearch id field.)
+ *      &lt;/fixBadIds&gt;
  *      &lt;signingRegion&gt;(CloudSearch signing region)&lt;/signingRegion&gt;
  *      &lt;sourceReferenceField keep="[false|true]"&gt;
  *         (Optional name of field that contains the document reference, when 
@@ -128,6 +145,12 @@ import com.norconex.commons.lang.time.DurationParser;
  *  &lt;/committer&gt;
  * </pre>
  * 
+ * <p>
+ * XML configuration entries expecting millisecond durations
+ * can be provided in human-readable format (English only), as per 
+ * {@link DurationParser} (e.g., "5 minutes and 30 seconds" or "5m30s").
+ * </p> 
+ * 
  * @author El-Hebri Khiari
  * @author Pascal Essiembre
  */
@@ -157,6 +180,7 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
     private String signingRegion;
     private String accessKey;
     private String secretKey;
+    private boolean fixBadIds;
     
     public CloudSearchCommitter() {
         this(null);
@@ -281,6 +305,29 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         }
     }
 
+    /**
+     * Gets whether to fix IDs that are too long for CloudSearch
+     * ID limitation (128 characters max). If <code>true</code>, 
+     * long IDs will be truncated and a hash code representing the 
+     * truncated part will be appended.
+     * @return <code>true</code> to fix IDs that are too long
+     * @since 1.3.0
+     */
+    public boolean isFixBadIds() {
+        return fixBadIds;
+    }
+    /**
+     * Sets whether to fix IDs that are too long for CloudSearch
+     * ID limitation (128 characters max). If <code>true</code>, 
+     * long IDs will be truncated and a hash code representing the 
+     * truncated part will be appended.
+     * @param fixBadIds <code>true</code> to fix IDs that are too long
+     * @since 1.3.0
+     */
+    public void setFixBadIds(boolean fixBadIds) {
+        this.fixBadIds = fixBadIds;
+    }
+    
     @Override
     protected void commitBatch(List<ICommitOperation> batch) {        
         LOG.info("Sending " + batch.size() 
@@ -308,12 +355,8 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         // CloudSearch UploadRequest. If memory becomes a concern, consider 
         // streaming to file.
         // ArrayList.toString() joins the elements in a JSON-compliant way.
-        byte[] bytes;
-        try {
-            bytes = documentBatch.toString().getBytes(CharEncoding.UTF_8);
-        } catch (UnsupportedEncodingException e) {
-            throw new CommitterException("UTF-8 not supported by OS.", e);
-        }
+        byte[] bytes = 
+                documentBatch.toString().getBytes(StandardCharsets.UTF_8);
         try (ByteArrayInputStream is = new ByteArrayInputStream(bytes)) {
             UploadDocumentsRequest uploadRequest = new UploadDocumentsRequest();
             uploadRequest.setContentType("application/json");
@@ -334,8 +377,8 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
     }
     
     private synchronized void ensureAWSClient() {
-        if (StringUtils.isBlank(getDocumentEndpoint())) {
-            throw new CommitterException("Document endpoint is undefined.");
+        if (StringUtils.isBlank(getServiceEndpoint())) {
+            throw new CommitterException("Service endpoint is undefined.");
         }
         
         if (!needNewAwsClient) {
@@ -365,12 +408,12 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         Map<String, Object> documentMap = new HashMap<>();
         documentMap.put("type", "add");
         documentMap.put(COULDSEARCH_ID_FIELD, 
-                fields.getString(TEMP_TARGET_ID_FIELD));
+                fixBadIdValue(fields.getString(TEMP_TARGET_ID_FIELD)));
         fields.remove(TEMP_TARGET_ID_FIELD);
         Map<String, Object> fieldMap = new HashMap<>();
         for (String key : fields.keySet()) {
             List<String> values = fields.getStrings(key);
-            if (!StringUtils.equals(key, "id")) {
+            if (!COULDSEARCH_ID_FIELD.equals(key)) {
                 /*size = 1 : non-empty single-valued field
                   size > 1 : non-empty multi-valued field
                   size = 0 : empty field
@@ -389,6 +432,24 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         return new JSONObject(documentMap);
     }
     
+    private String fixBadIdValue(String value) {
+        if (StringUtils.isBlank(value)) {
+            throw new CommitterException("Document id cannot be empty.");
+        }
+        
+        if (fixBadIds) {
+            String v = value.replaceAll(
+                    "[^a-zA-Z0-9\\-\\_\\/\\#\\:\\.\\;\\&\\=\\?"
+                  + "\\@\\$\\+\\!\\*'\\(\\)\\,\\%]", "_");
+            v = StringUtil.truncateWithHash(v, 128, '!');
+            if (LOG.isDebugEnabled() && !value.equals(v)) {
+                LOG.debug("Fixed document id from \"" + value + "\" to \""
+                        + v + "\".");
+            }
+            return v;
+        }
+        return value;
+    }
     private String fixKey(String key) {
         if (FIELD_PATTERN.matcher(key).matches()) {
             return key;
@@ -407,45 +468,37 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
     private JSONObject buildJsonDocumentDeletion(String reference) {
         Map<String, Object> documentMap = new HashMap<>();
         documentMap.put("type", "delete");
-        documentMap.put(COULDSEARCH_ID_FIELD, reference);
+        documentMap.put(COULDSEARCH_ID_FIELD, fixBadIdValue(reference));
         return new JSONObject(documentMap);
     }
 
     @Override
     protected void saveToXML(XMLStreamWriter writer) throws XMLStreamException {
-        writer.writeStartElement("serviceEndpoint");
-        writer.writeCharacters(serviceEndpoint);
-        writer.writeEndElement();
-
-        writer.writeStartElement("signingRegion");
-        writer.writeCharacters(signingRegion);
-        writer.writeEndElement();
-        
-        writer.writeStartElement("accessKey");
-        writer.writeCharacters(accessKey);
-        writer.writeEndElement();
-
-        writer.writeStartElement("secretKey");
-        writer.writeCharacters(secretKey);
-        writer.writeEndElement();
+        EnhancedXMLStreamWriter w = new EnhancedXMLStreamWriter(writer);
+        w.writeElementString("serviceEndpoint", serviceEndpoint);
+        w.writeElementString("signingRegion", signingRegion);
+        w.writeElementString("accessKey", accessKey);
+        w.writeElementString("secretKey", secretKey);
+        w.writeElementBoolean("fixBadIds", fixBadIds);
     }
 
     @Override
     protected void loadFromXml(XMLConfiguration xml) {
-        String serviceEndpoint = xml.getString("serviceEndpoint", null);
-        if (StringUtils.isBlank(serviceEndpoint)) {
-            serviceEndpoint = xml.getString("documentEndpoint", null);
-            if (StringUtils.isNotBlank(serviceEndpoint)) {
+        String endpoint = xml.getString("serviceEndpoint", null);
+        if (StringUtils.isBlank(endpoint)) {
+            endpoint = xml.getString("documentEndpoint", null);
+            if (StringUtils.isNotBlank(endpoint)) {
                 LOG.warn("XML configuration \"documentEndpoint\" is "
                         + "deprecated. Use \"serviceEndpoint\" instead.");
             } else {
-                serviceEndpoint = getServiceEndpoint();
+                endpoint = getServiceEndpoint();
             }
         }
-        setServiceEndpoint(serviceEndpoint);
+        setServiceEndpoint(endpoint);
         setSigningRegion(xml.getString("signingRegion", getSigningRegion()));
         setAccessKey(xml.getString("accessKey", getAccessKey()));
         setSecretKey(xml.getString("secretKey", getSecretKey()));
+        setFixBadIds(xml.getBoolean("fixBadIds", isFixBadIds()));
     }
     
     @Override
@@ -456,6 +509,7 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
             .append(signingRegion)
             .append(accessKey)
             .append(secretKey)
+            .append(fixBadIds)
             .toHashCode();
     }
 
@@ -477,6 +531,7 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
             .append(signingRegion, other.signingRegion)
             .append(accessKey, other.accessKey)
             .append(secretKey, other.secretKey)
+            .append(fixBadIds, other.fixBadIds)
             .isEquals();
     }
     
@@ -488,6 +543,7 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
                 .append("signingRegion", signingRegion)
                 .append("accessKey", accessKey)
                 .append("secretKey", secretKey)
+                .append("fixBadIds", fixBadIds)
                 .toString();
     }
 }

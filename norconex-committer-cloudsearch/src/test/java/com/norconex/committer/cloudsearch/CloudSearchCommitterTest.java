@@ -40,6 +40,7 @@ public class CloudSearchCommitterTest {
         c.setServiceEndpoint("serviceEndpoint");
         c.setSigningRegion("signingRegion");
         c.setCommitBatchSize(10);
+        c.setFixBadIds(true);
         c.setKeepSourceContentField(true);
         c.setKeepSourceReferenceField(true);
         c.setMaxRetries(3);
