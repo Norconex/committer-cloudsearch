@@ -441,7 +441,7 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
             String v = value.replaceAll(
                     "[^a-zA-Z0-9\\-\\_\\/\\#\\:\\.\\;\\&\\=\\?"
                   + "\\@\\$\\+\\!\\*'\\(\\)\\,\\%]", "_");
-            v = StringUtil.truncateWithHash(v, 128, '!');
+            v = StringUtil.truncateWithHash(v, 128, "!");
             if (LOG.isDebugEnabled() && !value.equals(v)) {
                 LOG.debug("Fixed document id from \"" + value + "\" to \""
                         + v + "\".");
