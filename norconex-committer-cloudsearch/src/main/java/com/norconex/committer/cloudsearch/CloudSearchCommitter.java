@@ -14,8 +14,7 @@
  */
 package com.norconex.committer.cloudsearch;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,6 +26,8 @@ import java.util.regex.Pattern;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import com.amazonaws.ClientConfiguration;
+import com.fasterxml.jackson.core.JsonParseException;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -62,64 +63,64 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  * </p>
  * <h3>Authentication:</h3>
  * <p>
- * An access key and security key are required to connect to interact with 
+ * An access key and security key are required to connect to interact with
  * CloudSearch. For enhanced security, it is best to use one of the methods
  * described in {@link DefaultAWSCredentialsProviderChain} for setting them
- * (environment variables, system properties, profile file, etc). 
- * Do not explicitly set "accessKey" and "secretKey" on this class if you 
+ * (environment variables, system properties, profile file, etc).
+ * Do not explicitly set "accessKey" and "secretKey" on this class if you
  * want to rely on safer methods.
  * </p>
  * <h3>CloudSearch ID limitations:</h3>
  * <p>
- * As of this writing, CloudSearch has a 128 characters limitation 
+ * As of this writing, CloudSearch has a 128 characters limitation
  * on its "id" field. In addition, certain characters are not allowed.
  * By default, an error will result from trying to submit
  * documents with an invalid ID. <b>As of 1.3.0</b>, you can get around this by
  * setting {@link #setFixBadIds(boolean)} to <code>true</code>.  It will
  * truncate references that are too long and append a hash code to it
  * representing the truncated part.  It will also convert invalid
- * characters to underscore.  This approach is not 100% 
- * collision-free (uniqueness), but it should safely cover the vast 
- * majority of cases. 
+ * characters to underscore.  This approach is not 100%
+ * collision-free (uniqueness), but it should safely cover the vast
+ * majority of cases.
  * </p>
  * <p>
- * If you want to keep the original (non-truncated) URL, make sure you set 
+ * If you want to keep the original (non-truncated) URL, make sure you set
  * {@link #setKeepSourceReferenceField(boolean)} to <code>true</code>.
  * </p>
- * 
+ * <p>
  * <h3>XML configuration usage:</h3>
- * 
+ * <p>
  * <pre>
  *  &lt;committer class="com.norconex.committer.cloudsearch.CloudSearchCommitter"&gt;
- *  
+ *
  *      &lt;!-- Mandatory: --&gt;
  *      &lt;serviceEndpoint&gt;(CloudSearch service endpoint)&lt;/serviceEndpoint&gt;
- *      
+ *
  *      &lt;!-- Mandatory if not configured elsewhere: --&gt;
  *      &lt;accessKey&gt;
- *         (Optional CloudSearch access key. Will be taken from environment 
+ *         (Optional CloudSearch access key. Will be taken from environment
  *          when blank.)
  *      &lt;/accessKey&gt;
  *      &lt;secretKey&gt;
  *         (Optional CloudSearch secret key. Will be taken from environment
  *          when blank.)
  *      &lt;/secretKey&gt;
- *      
+ *
  *      &lt;!-- Optional settings: --&gt;
  *      &lt;fixBadIds&gt;
  *         [false|true](Forces references to fit into a CloudSearch id field.)
  *      &lt;/fixBadIds&gt;
  *      &lt;signingRegion&gt;(CloudSearch signing region)&lt;/signingRegion&gt;
  *      &lt;sourceReferenceField keep="[false|true]"&gt;
- *         (Optional name of field that contains the document reference, when 
+ *         (Optional name of field that contains the document reference, when
  *         the default document reference is not used.  The reference value
  *         will be mapped to CloudSearch "id" field, which is mandatory.
- *         Once re-mapped, this metadata source field is 
+ *         Once re-mapped, this metadata source field is
  *         deleted, unless "keep" is set to <code>true</code>.)
  *      &lt;/sourceReferenceField&gt;
  *      &lt;sourceContentField keep="[false|true]"&gt;
- *         (If you wish to use a metadata field to act as the document 
- *         "content", you can specify that field here.  Default 
+ *         (If you wish to use a metadata field to act as the document
+ *         "content", you can specify that field here.  Default
  *         does not take a metadata field but rather the document content.
  *         Once re-mapped, the metadata source field is deleted,
  *         unless "keep" is set to <code>true</code>.)
@@ -139,56 +140,66 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *      &lt;maxRetries&gt;
  *          (Max retries upon commit failures. Default is 0.)
  *      &lt;/maxRetries&gt;
- *      &lt;maxRetryWait&gt;
- *          (Max delay in milliseconds between retries. Default is 0.)
- *      &lt;/maxRetryWait&gt;
+ *      &lt;proxyHost&gt;...&lt;/proxyHost&gt;
+ *      &lt;proxyPort&gt;...&lt;/proxyPort&gt;
+ *      &lt;proxyUsername&gt;...&lt;/proxyUsername&gt;
+ *      &lt;proxyPassword&gt;...&lt;/proxyPassword&gt;
  *  &lt;/committer&gt;
  * </pre>
- * 
+ * <p>
  * <p>
  * XML configuration entries expecting millisecond durations
- * can be provided in human-readable format (English only), as per 
+ * can be provided in human-readable format (English only), as per
  * {@link DurationParser} (e.g., "5 minutes and 30 seconds" or "5m30s").
- * </p> 
- * 
+ * </p>
+ *
  * @author El-Hebri Khiari
  * @author Pascal Essiembre
  */
 public class CloudSearchCommitter extends AbstractMappedCommitter {
 
-    private static final Logger LOG = 
+    private static final Logger LOG =
             LogManager.getLogger(CloudSearchCommitter.class);
-    
-    /** 
-     * CouldSearch mandatory field pattern. Characters not matching 
+
+    /**
+     * CouldSearch mandatory field pattern. Characters not matching
      * the pattern will be replaced by an underscore.
      */
     public static final Pattern FIELD_PATTERN = Pattern.compile(
             "[a-z0-9][a-z0-9_]{0,63}$");
-    
-    /** CloudSearch mandatory ID field */
+
+    /**
+     * CloudSearch mandatory ID field
+     */
     public static final String COULDSEARCH_ID_FIELD = "id";
-    /** Default CloudSearch content field */
+    /**
+     * Default CloudSearch content field
+     */
     public static final String DEFAULT_COULDSEARCH_CONTENT_FIELD = "content";
-    
+
     private static final String TEMP_TARGET_ID_FIELD = "__nx.cloudsearch.id";
-    
+
     private AmazonCloudSearchDomain awsClient;
     private boolean needNewAwsClient = true;
-    
+
     private String serviceEndpoint;
     private String signingRegion;
     private String accessKey;
     private String secretKey;
     private boolean fixBadIds;
-    
+    private String proxyHost = null;
+    private int proxyPort = 8080;
+    private String proxyUsername = null;
+    private String proxyPasswort = null;
+
     public CloudSearchCommitter() {
         this(null);
     }
+
     public CloudSearchCommitter(String serviceEndpoint) {
         this(serviceEndpoint, null);
     }
-    
+
     public CloudSearchCommitter(String serviceEndpoint, String signingRegion) {
         super();
         this.serviceEndpoint = serviceEndpoint;
@@ -199,14 +210,17 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
 
     /**
      * Gets AWS service endpoint.
+     *
      * @return AWS service endpoing
      * @since 1.2.0.
      */
     public String getServiceEndpoint() {
         return serviceEndpoint;
     }
+
     /**
      * Sets AWS service endpoint.
+     *
      * @param serviceEndpoint AWS service endpoing
      * @since 1.2.0.
      */
@@ -214,16 +228,20 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         this.serviceEndpoint = serviceEndpoint;
         needNewAwsClient = true;
     }
+
     /**
      * Gets the AWS signing region.
+     *
      * @return the AWS signing region
      * @since 1.2.0.
      */
     public String getSigningRegion() {
         return signingRegion;
     }
+
     /**
      * Gets the AWS signing region.
+     *
      * @param signingRegion the AWS signing region
      * @since 1.2.0.
      */
@@ -231,8 +249,10 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         this.signingRegion = signingRegion;
         needNewAwsClient = true;
     }
+
     /**
-     * Gets the CloudSearch document endpoint. 
+     * Gets the CloudSearch document endpoint.
+     *
      * @return document endpoint
      * @deprecated Since 1.2.0, use {@link #setServiceEndpoint(String)}
      */
@@ -240,8 +260,10 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
     public String getDocumentEndpoint() {
         return getServiceEndpoint();
     }
+
     /**
      * Sets the CloudSearch document endpoint.
+     *
      * @param documentEndpoint document endpoint
      * @deprecated Since 1.2.0, use {@link #getServiceEndpoint()}
      */
@@ -252,17 +274,20 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
 
     /**
      * Gets the CloudSearch access key. If <code>null</code>, the access key
-     * will be obtained from the environment, as detailed in 
+     * will be obtained from the environment, as detailed in
      * {@link DefaultAWSCredentialsProviderChain}.
-     * @return the access key 
+     *
+     * @return the access key
      */
     public String getAccessKey() {
         return accessKey;
     }
+
     /**
      * Sets the CloudSearch access key.  If <code>null</code>, the access key
-     * will be obtained from the environment, as detailed in 
+     * will be obtained from the environment, as detailed in
      * {@link DefaultAWSCredentialsProviderChain}.
+     *
      * @param accessKey the access key
      */
     public void setAccessKey(String accessKey) {
@@ -272,28 +297,32 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
 
     /**
      * Gets the CloudSearch secret key. If <code>null</code>, the secret key
-     * will be obtained from the environment, as detailed in 
+     * will be obtained from the environment, as detailed in
      * {@link DefaultAWSCredentialsProviderChain}.
-     * @return the secret key 
+     *
+     * @return the secret key
      */
     public String getSecretKey() {
         return secretKey;
     }
+
     /**
      * Sets the CloudSearch secret key.  If <code>null</code>, the secret key
-     * will be obtained from the environment, as detailed in 
+     * will be obtained from the environment, as detailed in
      * {@link DefaultAWSCredentialsProviderChain}.
+     *
      * @param secretKey the secret key
      */
     public void setSecretKey(String secretKey) {
         this.secretKey = secretKey;
         needNewAwsClient = true;
     }
-    
+
     /**
-     * This method is not supported and will throw an 
+     * This method is not supported and will throw an
      * {@link UnsupportedOperationException} if invoked.  With CloudSearch,
      * the target field for a document unique id is always "id".
+     *
      * @param targetReferenceField the target field
      */
     @Override
@@ -307,37 +336,72 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
 
     /**
      * Gets whether to fix IDs that are too long for CloudSearch
-     * ID limitation (128 characters max). If <code>true</code>, 
-     * long IDs will be truncated and a hash code representing the 
+     * ID limitation (128 characters max). If <code>true</code>,
+     * long IDs will be truncated and a hash code representing the
      * truncated part will be appended.
+     *
      * @return <code>true</code> to fix IDs that are too long
      * @since 1.3.0
      */
     public boolean isFixBadIds() {
         return fixBadIds;
     }
+
     /**
      * Sets whether to fix IDs that are too long for CloudSearch
-     * ID limitation (128 characters max). If <code>true</code>, 
-     * long IDs will be truncated and a hash code representing the 
+     * ID limitation (128 characters max). If <code>true</code>,
+     * long IDs will be truncated and a hash code representing the
      * truncated part will be appended.
+     *
      * @param fixBadIds <code>true</code> to fix IDs that are too long
      * @since 1.3.0
      */
     public void setFixBadIds(boolean fixBadIds) {
         this.fixBadIds = fixBadIds;
     }
-    
+
+    public String getProxyHost() {
+        return proxyHost;
+    }
+
+    public void setProxyHost(String proxyHost) {
+        this.proxyHost = proxyHost;
+    }
+
+    public int getProxyPort() {
+        return proxyPort;
+    }
+
+    public void setProxyPort(int proxyPort) {
+        this.proxyPort = proxyPort;
+    }
+
+    public String getProxyUsername() {
+        return proxyUsername;
+    }
+
+    public void setProxyUsername(String proxyUsername) {
+        this.proxyUsername = proxyUsername;
+    }
+
+    public String getProxyPasswort() {
+        return proxyPasswort;
+    }
+
+    public void setProxyPasswort(String proxyPasswort) {
+        this.proxyPasswort = proxyPasswort;
+    }
+
     @Override
-    protected void commitBatch(List<ICommitOperation> batch) {        
-        LOG.info("Sending " + batch.size() 
+    protected void commitBatch(List<ICommitOperation> batch) {
+        LOG.info("Sending " + batch.size()
                 + " documents to AWS CloudSearch for addition/deletion.");
-        
+
         List<JSONObject> documentBatch = new ArrayList<>();
         for (ICommitOperation op : batch) {
             if (op instanceof IAddOperation) {
-               documentBatch.add(buildJsonDocumentAddition(
-                       ((IAddOperation) op).getMetadata()));
+                documentBatch.add(buildJsonDocumentAddition(
+                        ((IAddOperation) op).getMetadata()));
             } else if (op instanceof IDeleteOperation) {
                 documentBatch.add(buildJsonDocumentDeletion(
                         ((IDeleteOperation) op).getReference()));
@@ -345,17 +409,26 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
                 throw new CommitterException("Unsupported operation:" + op);
             }
         }
+        File logFile = new File("data.json");
 
+        try (
+                BufferedWriter writer = new BufferedWriter(new FileWriter(logFile));
+        ) {
+
+            writer.write(documentBatch.toString());
+        } catch (Exception e) {
+            LOG.error("Error", e);
+        }
         uploadBatchToCloudSearch(documentBatch);
     }
-    
+
     private void uploadBatchToCloudSearch(List<JSONObject> documentBatch) {
         // Convert the JSON list to String and read it as a stream from memory
         // (for increased performance), for it to be usable by the AWS 
         // CloudSearch UploadRequest. If memory becomes a concern, consider 
         // streaming to file.
         // ArrayList.toString() joins the elements in a JSON-compliant way.
-        byte[] bytes = 
+        byte[] bytes =
                 documentBatch.toString().getBytes(StandardCharsets.UTF_8);
         try (ByteArrayInputStream is = new ByteArrayInputStream(bytes)) {
             UploadDocumentsRequest uploadRequest = new UploadDocumentsRequest();
@@ -363,30 +436,34 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
             uploadRequest.setDocuments(is);
             uploadRequest.setContentLength((long) bytes.length);
             ensureAWSClient();
-            UploadDocumentsResult result = 
-                    awsClient.uploadDocuments(uploadRequest); 
+            UploadDocumentsResult result =
+                    awsClient.uploadDocuments(uploadRequest);
             LOG.info(result.getAdds() + " Add requests and "
                     + result.getDeletes() + " Delete requests "
-                    + "sent to the AWS CloudSearch domain."); 
+                    + "sent to the AWS CloudSearch domain.");
         } catch (IOException | AmazonServiceException e) {
+            if (e instanceof JsonParseException) {
+                LOG.error(((JsonParseException) e).getLocation().toString());
+            }
             LOG.error("CloudSearch error: " + e.getMessage());
             throw new CommitterException(
                     "Could not upload request to CloudSearch: "
                             + e.getMessage(), e);
         }
     }
-    
+
     private synchronized void ensureAWSClient() {
         if (StringUtils.isBlank(getServiceEndpoint())) {
             throw new CommitterException("Service endpoint is undefined.");
         }
-        
+
         if (!needNewAwsClient) {
             return;
         }
 
-        AmazonCloudSearchDomainClientBuilder b = 
+        AmazonCloudSearchDomainClientBuilder b =
                 AmazonCloudSearchDomainClientBuilder.standard();
+        b.setClientConfiguration(buildClientConfiguration());
         if (StringUtils.isAnyBlank(accessKey, secretKey)) {
             b.withCredentials(new DefaultAWSCredentialsProviderChain());
         } else {
@@ -399,15 +476,28 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         needNewAwsClient = false;
     }
 
+    private ClientConfiguration buildClientConfiguration(){
+        ClientConfiguration clientConfiguration = new ClientConfiguration();
+        if(getProxyHost() != null){
+            clientConfiguration.setProxyHost(getProxyHost());
+            clientConfiguration.setProxyPort(getProxyPort());
+            if(getProxyUsername() != null) {
+                clientConfiguration.setProxyUsername(getProxyUsername());
+                clientConfiguration.setProxyPassword(getProxyPasswort());
+            }
+        }
+        return clientConfiguration;
+    }
+
     private JSONObject buildJsonDocumentAddition(Properties fields) {
-    	if (fields.isEmpty()) {
-    	    throw new CommitterException(
-    	            "Attempting to commit an empty document.");
-    	}
-    	
+        if (fields.isEmpty()) {
+            throw new CommitterException(
+                    "Attempting to commit an empty document.");
+        }
+
         Map<String, Object> documentMap = new HashMap<>();
         documentMap.put("type", "add");
-        documentMap.put(COULDSEARCH_ID_FIELD, 
+        documentMap.put(COULDSEARCH_ID_FIELD,
                 fixBadIdValue(fields.getString(TEMP_TARGET_ID_FIELD)));
         fields.remove(TEMP_TARGET_ID_FIELD);
         Map<String, Object> fieldMap = new HashMap<>();
@@ -417,30 +507,30 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
                 /*size = 1 : non-empty single-valued field
                   size > 1 : non-empty multi-valued field
                   size = 0 : empty field
-                */  
+                */
                 String fixedKey = fixKey(key);
                 if (values.size() == 1) {
                     fieldMap.put(fixedKey, values.get(0));
-                } else if (values.size() > 1){
+                } else if (values.size() > 1) {
                     fieldMap.put(fixedKey, values);
                 } else {
                     fieldMap.put(fixedKey, "");
                 }
             }
-        }    
+        }
         documentMap.put("fields", fieldMap);
         return new JSONObject(documentMap);
     }
-    
+
     private String fixBadIdValue(String value) {
         if (StringUtils.isBlank(value)) {
             throw new CommitterException("Document id cannot be empty.");
         }
-        
+
         if (fixBadIds) {
             String v = value.replaceAll(
                     "[^a-zA-Z0-9\\-\\_\\/\\#\\:\\.\\;\\&\\=\\?"
-                  + "\\@\\$\\+\\!\\*'\\(\\)\\,\\%]", "_");
+                            + "\\@\\$\\+\\!\\*'\\(\\)\\,\\%]", "_");
             v = StringUtil.truncateWithHash(v, 128, "!");
             if (LOG.isDebugEnabled() && !value.equals(v)) {
                 LOG.debug("Fixed document id from \"" + value + "\" to \""
@@ -450,6 +540,7 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         }
         return value;
     }
+
     private String fixKey(String key) {
         if (FIELD_PATTERN.matcher(key).matches()) {
             return key;
@@ -460,11 +551,11 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         fix = fix.replaceAll("[^a-zA-Z0-9_]", "_");
         fix = fix.toLowerCase(Locale.ENGLISH);
         LOG.warn("\"" + key + "\" field renamed to \"" + fix + "\" as it "
-                + "does not match CloudSearch required pattern: " 
+                + "does not match CloudSearch required pattern: "
                 + FIELD_PATTERN);
         return fix;
     }
-    
+
     private JSONObject buildJsonDocumentDeletion(String reference) {
         Map<String, Object> documentMap = new HashMap<>();
         documentMap.put("type", "delete");
@@ -480,6 +571,11 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         w.writeElementString("accessKey", accessKey);
         w.writeElementString("secretKey", secretKey);
         w.writeElementBoolean("fixBadIds", fixBadIds);
+        w.writeElementString("proxyHost", proxyHost);
+        w.writeElementInteger("proxyPort", proxyPort);
+        w.writeElementString("proxyUsername", proxyUsername);
+        w.writeElementString("proxyPassword", proxyPasswort);
+
     }
 
     @Override
@@ -499,18 +595,22 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         setAccessKey(xml.getString("accessKey", getAccessKey()));
         setSecretKey(xml.getString("secretKey", getSecretKey()));
         setFixBadIds(xml.getBoolean("fixBadIds", isFixBadIds()));
+        setProxyHost(xml.getString("proxyHost", getProxyHost()));
+        setProxyPort(xml.getInt("proxyPort", getProxyPort()));
+        setProxyUsername(xml.getString("proxyUsername", getProxyUsername()));
+        setProxyPasswort(xml.getString("proxyPassword", getProxyPasswort()));
     }
-    
+
     @Override
     public int hashCode() {
         return new HashCodeBuilder()
-            .appendSuper(super.hashCode())
-            .append(serviceEndpoint)
-            .append(signingRegion)
-            .append(accessKey)
-            .append(secretKey)
-            .append(fixBadIds)
-            .toHashCode();
+                .appendSuper(super.hashCode())
+                .append(serviceEndpoint)
+                .append(signingRegion)
+                .append(accessKey)
+                .append(secretKey)
+                .append(fixBadIds)
+                .toHashCode();
     }
 
     @Override
@@ -526,15 +626,15 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         }
         CloudSearchCommitter other = (CloudSearchCommitter) obj;
         return new EqualsBuilder()
-            .appendSuper(super.equals(obj))
-            .append(serviceEndpoint, other.serviceEndpoint)
-            .append(signingRegion, other.signingRegion)
-            .append(accessKey, other.accessKey)
-            .append(secretKey, other.secretKey)
-            .append(fixBadIds, other.fixBadIds)
-            .isEquals();
+                .appendSuper(super.equals(obj))
+                .append(serviceEndpoint, other.serviceEndpoint)
+                .append(signingRegion, other.signingRegion)
+                .append(accessKey, other.accessKey)
+                .append(secretKey, other.secretKey)
+                .append(fixBadIds, other.fixBadIds)
+                .isEquals();
     }
-    
+
     @Override
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.SHORT_PREFIX_STYLE)
