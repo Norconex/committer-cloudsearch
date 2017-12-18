@@ -14,20 +14,21 @@
  */
 package com.norconex.committer.cloudsearch;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Pattern;
-
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamWriter;
-
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.ClientConfiguration;
-import com.fasterxml.jackson.core.JsonParseException;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
+import com.amazonaws.services.cloudsearchdomain.AmazonCloudSearchDomain;
+import com.amazonaws.services.cloudsearchdomain.AmazonCloudSearchDomainClientBuilder;
+import com.amazonaws.services.cloudsearchdomain.model.UploadDocumentsRequest;
+import com.amazonaws.services.cloudsearchdomain.model.UploadDocumentsResult;
+import com.norconex.committer.core.*;
+import com.norconex.commons.lang.StringUtil;
+import com.norconex.commons.lang.map.Properties;
+import com.norconex.commons.lang.time.DurationParser;
+import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
@@ -38,24 +39,13 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
 
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
-import com.amazonaws.services.cloudsearchdomain.AmazonCloudSearchDomain;
-import com.amazonaws.services.cloudsearchdomain.AmazonCloudSearchDomainClientBuilder;
-import com.amazonaws.services.cloudsearchdomain.model.UploadDocumentsRequest;
-import com.amazonaws.services.cloudsearchdomain.model.UploadDocumentsResult;
-import com.norconex.committer.core.AbstractMappedCommitter;
-import com.norconex.committer.core.CommitterException;
-import com.norconex.committer.core.IAddOperation;
-import com.norconex.committer.core.ICommitOperation;
-import com.norconex.committer.core.IDeleteOperation;
-import com.norconex.commons.lang.StringUtil;
-import com.norconex.commons.lang.map.Properties;
-import com.norconex.commons.lang.time.DurationParser;
-import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.regex.Pattern;
 
 /**
  * <p>
@@ -409,16 +399,6 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
                 throw new CommitterException("Unsupported operation:" + op);
             }
         }
-        File logFile = new File("data.json");
-
-        try (
-                BufferedWriter writer = new BufferedWriter(new FileWriter(logFile));
-        ) {
-
-            writer.write(documentBatch.toString());
-        } catch (Exception e) {
-            LOG.error("Error", e);
-        }
         uploadBatchToCloudSearch(documentBatch);
     }
 
@@ -442,9 +422,6 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
                     + result.getDeletes() + " Delete requests "
                     + "sent to the AWS CloudSearch domain.");
         } catch (IOException | AmazonServiceException e) {
-            if (e instanceof JsonParseException) {
-                LOG.error(((JsonParseException) e).getLocation().toString());
-            }
             LOG.error("CloudSearch error: " + e.getMessage());
             throw new CommitterException(
                     "Could not upload request to CloudSearch: "
