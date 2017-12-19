@@ -89,7 +89,7 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  * If you want to keep the original (non-truncated) URL, make sure you set 
  * {@link #setKeepSourceReferenceField(boolean)} to <code>true</code>.
  * </p>
- * 
+ *
  * <h3>Password encryption in XML configuration:</h3>
  * <p>
  * As of 1.4.0, it is possible to specify proxy settings, and optionally, have

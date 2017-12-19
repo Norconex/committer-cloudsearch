@@ -54,5 +54,5 @@
       <xs:enumeration value="property"/>
     </xs:restriction>
   </xs:simpleType>
-    
+
 </xs:schema>
