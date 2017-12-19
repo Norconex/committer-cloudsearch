@@ -32,6 +32,8 @@
             <xs:element name="proxyPort" type="xs:int" minOccurs="0" maxOccurs="1" />
             <xs:element name="proxyUsername" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
             <xs:element name="proxyPassword" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
+            <xs:element name="proxyPasswordKey" type="nonEmptyString" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="proxyPasswordKeySource" type="passwordKeySourceType" minOccurs="0" maxOccurs="1"/>
           </xs:all>
         </xs:extension> 
       </xs:complexContent>
@@ -43,5 +45,14 @@
       <xs:minLength value="1"/>
     </xs:restriction>
   </xs:simpleType>
-  
+
+  <xs:simpleType name="passwordKeySourceType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="key"/>
+      <xs:enumeration value="file"/>
+      <xs:enumeration value="environment"/>
+      <xs:enumeration value="property"/>
+    </xs:restriction>
+  </xs:simpleType>
+    
 </xs:schema>

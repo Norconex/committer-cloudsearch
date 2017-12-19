@@ -21,6 +21,12 @@
   <signingRegion>region</signingRegion>
   <accessKey>access</accessKey>
   <secretKey>secret</secretKey>
+  <proxyHost>host</proxyHost>
+  <proxyPort>9000</proxyPort>
+  <proxyUsername>username</proxyUsername>
+  <proxyPassword>pwd</proxyPassword>
+  <proxyPasswordKey>key</proxyPasswordKey>
+  <proxyPasswordKeySource>environment</proxyPasswordKeySource>
   <sourceReferenceField keep="true">sourceReferenceField</sourceReferenceField>
   <!--
     Target reference field is always ID so no need to test: 
