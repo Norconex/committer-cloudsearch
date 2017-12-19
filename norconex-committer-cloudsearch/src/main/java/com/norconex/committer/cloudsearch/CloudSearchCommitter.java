@@ -38,6 +38,7 @@ import org.apache.log4j.Logger;
 import org.json.JSONObject;
 
 import com.amazonaws.AmazonServiceException;
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
@@ -52,6 +53,8 @@ import com.norconex.committer.core.IAddOperation;
 import com.norconex.committer.core.ICommitOperation;
 import com.norconex.committer.core.IDeleteOperation;
 import com.norconex.commons.lang.StringUtil;
+import com.norconex.commons.lang.encrypt.EncryptionKey;
+import com.norconex.commons.lang.encrypt.EncryptionUtil;
 import com.norconex.commons.lang.map.Properties;
 import com.norconex.commons.lang.time.DurationParser;
 import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
@@ -87,6 +90,41 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  * {@link #setKeepSourceReferenceField(boolean)} to <code>true</code>.
  * </p>
  * 
+ * <h3>Password encryption in XML configuration:</h3>
+ * <p>
+ * As of 1.4.0, it is possible to specify proxy settings, and optionally, have
+ * the supplied password encrypted using {@link EncryptionUtil} or 
+ * encrypt/decrypt scripts package with this library. 
+ * In order for the password to be decrypted properly by the crawler, you need
+ * to specify the encryption key used to encrypt it. The key can be stored
+ * in a few supported locations and a combination of 
+ * <code>proxyPasswordKey</code>
+ * and <code>proxyPasswordKeySource</code> must be specified to properly
+ * locate the key. The supported sources are:
+ * </p> 
+ * <table border="1" summary="">
+ *   <tr>
+ *     <th><code>proxyPasswordKeySource</code></th>
+ *     <th><code>proxyPasswordKey</code></th>
+ *   </tr>
+ *   <tr>
+ *     <td><code>key</code></td>
+ *     <td>The actual encryption key.</td>
+ *   </tr>
+ *   <tr>
+ *     <td><code>file</code></td>
+ *     <td>Path to a file containing the encryption key.</td>
+ *   </tr>
+ *   <tr>
+ *     <td><code>environment</code></td>
+ *     <td>Name of an environment variable containing the key.</td>
+ *   </tr>
+ *   <tr>
+ *     <td><code>property</code></td>
+ *     <td>Name of a JVM system property containing the key.</td>
+ *   </tr>
+ * </table>
+ * 
  * <h3>XML configuration usage:</h3>
  * 
  * <pre>
@@ -110,6 +148,14 @@ import com.norconex.commons.lang.xml.EnhancedXMLStreamWriter;
  *         [false|true](Forces references to fit into a CloudSearch id field.)
  *      &lt;/fixBadIds&gt;
  *      &lt;signingRegion&gt;(CloudSearch signing region)&lt;/signingRegion&gt;
+ *      &lt;proxyHost&gt;...&lt;/proxyHost&gt;
+ *      &lt;proxyPort&gt;...&lt;/proxyPort&gt;
+ *      &lt;proxyUsername&gt;...&lt;/proxyUsername&gt;
+ *      &lt;proxyPassword&gt;...&lt;/proxyPassword&gt;
+ *      &lt;!-- Use the following if password is encrypted. --&gt;
+ *      &lt;proxyPasswordKey&gt;(the encryption key or a reference to it)&lt;/proxyPasswordKey&gt;
+ *      &lt;proxyPasswordKeySource&gt;[key|file|environment|property]&lt;/proxyPasswordKeySource&gt;
+ *      
  *      &lt;sourceReferenceField keep="[false|true]"&gt;
  *         (Optional name of field that contains the document reference, when 
  *         the default document reference is not used.  The reference value
@@ -181,6 +227,11 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
     private String accessKey;
     private String secretKey;
     private boolean fixBadIds;
+    private String proxyHost = null;
+    private int proxyPort = 8080;
+    private String proxyUsername = null;
+    private String proxyPassword = null;
+    private EncryptionKey proxyPasswordKey;    
     
     public CloudSearchCommitter() {
         this(null);
@@ -328,6 +379,95 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         this.fixBadIds = fixBadIds;
     }
     
+    /**
+     * Gets the proxy host.
+     * @return proxy host
+     * @since 1.4.0
+     */
+    public String getProxyHost() {
+        return proxyHost;
+    }
+    /**
+     * Sets the proxy host.
+     * @param proxyHost proxy host
+     * @since 1.4.0
+     */
+    public void setProxyHost(String proxyHost) {
+        this.proxyHost = proxyHost;
+    }
+
+    /**
+     * Gets the proxy port.
+     * @return proxy port
+     * @since 1.4.0
+     */
+    public int getProxyPort() {
+        return proxyPort;
+    }
+    /**
+     * Sets the proxy port.
+     * @param proxyPort proxy port
+     * @since 1.4.0
+     */
+    public void setProxyPort(int proxyPort) {
+        this.proxyPort = proxyPort;
+    }
+
+    /**
+     * Gets the proxy username.
+     * @return proxy username
+     * @since 1.4.0
+     */
+    public String getProxyUsername() {
+        return proxyUsername;
+    }
+    /**
+     * Sets the proxy username
+     * @param proxyUsername proxy username
+     * @since 1.4.0
+     */
+    public void setProxyUsername(String proxyUsername) {
+        this.proxyUsername = proxyUsername;
+    }
+
+    /**
+     * Gets the proxy password.
+     * @return proxy password
+     * @since 1.4.0
+     */
+    public String getProxyPassword() {
+        return proxyPassword;
+    }
+    /**
+     * Sets the proxy password.
+     * @param proxyPassword proxy password
+     * @since 1.4.0
+     */
+    public void setProxyPassword(String proxyPassword) {
+        this.proxyPassword = proxyPassword;
+    }
+    
+    /**
+     * Gets the proxy password encryption key.
+     * @return the password key or <code>null</code> if the password is not
+     * encrypted.
+     * @see EncryptionUtil
+     * @since 1.4.0
+     */
+    public EncryptionKey getProxyPasswordKey() {
+        return proxyPasswordKey;
+    }
+    /**
+     * Sets the proxy password encryption key. Only required when 
+     * the password is encrypted.
+     * @param proxyPasswordKey password key
+     * @see EncryptionUtil
+     * @since 1.4.0
+     */
+    public void setProxyPasswordKey(EncryptionKey proxyPasswordKey) {
+        this.proxyPasswordKey = proxyPasswordKey;
+    }
+    
     @Override
     protected void commitBatch(List<ICommitOperation> batch) {        
         LOG.info("Sending " + batch.size() 
@@ -387,6 +527,7 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
 
         AmazonCloudSearchDomainClientBuilder b = 
                 AmazonCloudSearchDomainClientBuilder.standard();
+        b.setClientConfiguration(buildClientConfiguration());
         if (StringUtils.isAnyBlank(accessKey, secretKey)) {
             b.withCredentials(new DefaultAWSCredentialsProviderChain());
         } else {
@@ -397,6 +538,20 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
                 new EndpointConfiguration(serviceEndpoint, signingRegion));
         awsClient = b.build();
         needNewAwsClient = false;
+    }
+
+    protected ClientConfiguration buildClientConfiguration(){
+        ClientConfiguration clientConfiguration = new ClientConfiguration();
+        if (StringUtils.isNotBlank(getProxyHost())) {
+            clientConfiguration.setProxyHost(getProxyHost());
+            clientConfiguration.setProxyPort(getProxyPort());
+            if (StringUtils.isNotBlank(getProxyUsername())) {
+                clientConfiguration.setProxyUsername(getProxyUsername());
+                clientConfiguration.setProxyPassword(EncryptionUtil.decrypt(
+                        proxyPassword, proxyPasswordKey));
+            }
+        }
+        return clientConfiguration;
     }
 
     private JSONObject buildJsonDocumentAddition(Properties fields) {
@@ -480,8 +635,25 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         w.writeElementString("accessKey", accessKey);
         w.writeElementString("secretKey", secretKey);
         w.writeElementBoolean("fixBadIds", fixBadIds);
+        w.writeElementString("proxyHost", proxyHost);
+        w.writeElementInteger("proxyPort", proxyPort);
+        w.writeElementString("proxyUsername", proxyUsername);
+        w.writeElementString("proxyPassword", proxyPassword);
+        saveXMLPasswordKey(w, "proxyPasswordKey", proxyPasswordKey);
+    }
+    private void saveXMLPasswordKey(EnhancedXMLStreamWriter writer, 
+            String field, EncryptionKey key) throws XMLStreamException {
+        if (key == null) {
+            return;
+        }
+        writer.writeElementString(field, key.getValue());
+        if (key.getSource() != null) {
+            writer.writeElementString(
+                    field + "Source", key.getSource().name().toLowerCase());
+        }
     }
 
+    
     @Override
     protected void loadFromXml(XMLConfiguration xml) {
         String endpoint = xml.getString("serviceEndpoint", null);
@@ -499,6 +671,26 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
         setAccessKey(xml.getString("accessKey", getAccessKey()));
         setSecretKey(xml.getString("secretKey", getSecretKey()));
         setFixBadIds(xml.getBoolean("fixBadIds", isFixBadIds()));
+        setProxyHost(xml.getString("proxyHost", getProxyHost()));
+        setProxyPort(xml.getInt("proxyPort", getProxyPort()));
+        setProxyUsername(xml.getString("proxyUsername", getProxyUsername()));
+        setProxyPassword(xml.getString("proxyPassword", getProxyPassword()));
+        setProxyPasswordKey(
+                loadXMLPasswordKey(xml, "proxyPasswordKey", proxyPasswordKey));
+    }
+    
+    private EncryptionKey loadXMLPasswordKey(
+            XMLConfiguration xml, String field, EncryptionKey defaultKey) {
+        String xmlKey = xml.getString(field, null);
+        String xmlSource = xml.getString(field + "Source", null);
+        if (StringUtils.isBlank(xmlKey)) {
+            return defaultKey;
+        }
+        EncryptionKey.Source source = null;
+        if (StringUtils.isNotBlank(xmlSource)) {
+            source = EncryptionKey.Source.valueOf(xmlSource.toUpperCase());
+        }
+        return new EncryptionKey(xmlKey, source);
     }
     
     @Override
@@ -510,6 +702,11 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
             .append(accessKey)
             .append(secretKey)
             .append(fixBadIds)
+            .append(proxyHost)
+            .append(proxyPort)
+            .append(proxyUsername)
+            .append(proxyPassword)
+            .append(proxyPasswordKey)
             .toHashCode();
     }
 
@@ -532,6 +729,11 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
             .append(accessKey, other.accessKey)
             .append(secretKey, other.secretKey)
             .append(fixBadIds, other.fixBadIds)
+            .append(proxyHost, proxyHost)
+            .append(proxyPort, proxyPort)
+            .append(proxyUsername, proxyUsername)
+            .append(proxyPassword, proxyPassword)
+            .append(proxyPasswordKey, proxyPasswordKey)
             .isEquals();
     }
     
@@ -544,6 +746,11 @@ public class CloudSearchCommitter extends AbstractMappedCommitter {
                 .append("accessKey", accessKey)
                 .append("secretKey", secretKey)
                 .append("fixBadIds", fixBadIds)
+                .append("proxyHost", proxyHost)
+                .append("proxyPort", proxyPort)
+                .append("proxyUsername", proxyUsername)
+                .append("proxyPassword", "*****")
+                .append("proxyPasswordKey", proxyPasswordKey)
                 .toString();
     }
 }

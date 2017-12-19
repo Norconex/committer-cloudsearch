@@ -24,6 +24,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.norconex.commons.lang.config.XMLConfigurationUtil;
+import com.norconex.commons.lang.encrypt.EncryptionKey;
+import com.norconex.commons.lang.encrypt.EncryptionKey.Source;
 import com.norconex.commons.lang.log.CountingConsoleAppender;
 
 
@@ -46,6 +48,11 @@ public class CloudSearchCommitterTest {
         c.setMaxRetries(3);
         c.setQueueDir(new File("C:\temp").getAbsolutePath());
         c.setQueueSize(5);
+        c.setProxyHost("host");
+        c.setProxyHost("port");
+        c.setProxyUsername("username");
+        c.setProxyPassword("pwd");
+        c.setProxyPasswordKey(new EncryptionKey("key", Source.ENVIRONMENT));
         c.setSourceContentField("sourceContentField");
         c.setSourceReferenceField("sourceReferenceField");
         c.setTargetContentField("targetContentField");
