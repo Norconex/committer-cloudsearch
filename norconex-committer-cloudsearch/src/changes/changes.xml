@@ -7,7 +7,7 @@
   </properties>
   <body>
     
-    <release version="1.4.0-SNAPSHOT" date="201?-??-??" description="Feature release">
+    <release version="1.4.0" date="2018-01-24" description="Feature release">
       <action dev="tschechniker,essiembre" type="add">
         Added proxy support.
       </action>
