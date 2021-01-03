@@ -23,28 +23,22 @@
       <xs:complexContent> 
         <xs:extension base="AbstractMappedCommitter">
           <xs:all>
-            <xs:element name="serviceEndpoint" type="nonEmptyString" minOccurs="1" maxOccurs="1" />
-            <xs:element name="signingRegion" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
-            <xs:element name="accessKey" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
-            <xs:element name="secretKey" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
+            <xs:element name="serviceEndpoint" type="xs:string" minOccurs="1" maxOccurs="1" />
+            <xs:element name="signingRegion" type="xs:string" minOccurs="0" maxOccurs="1" />
+            <xs:element name="accessKey" type="xs:string" minOccurs="0" maxOccurs="1" />
+            <xs:element name="secretKey" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element name="fixBadIds" type="xs:boolean" minOccurs="0" maxOccurs="1" />
-            <xs:element name="proxyHost" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
+            <xs:element name="proxyHost" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element name="proxyPort" type="xs:int" minOccurs="0" maxOccurs="1" />
-            <xs:element name="proxyUsername" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
-            <xs:element name="proxyPassword" type="nonEmptyString" minOccurs="0" maxOccurs="1" />
-            <xs:element name="proxyPasswordKey" type="nonEmptyString" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="proxyUsername" type="xs:string" minOccurs="0" maxOccurs="1" />
+            <xs:element name="proxyPassword" type="xs:string" minOccurs="0" maxOccurs="1" />
+            <xs:element name="proxyPasswordKey" type="xs:string" minOccurs="0" maxOccurs="1"/>
             <xs:element name="proxyPasswordKeySource" type="passwordKeySourceType" minOccurs="0" maxOccurs="1"/>
           </xs:all>
         </xs:extension> 
       </xs:complexContent>
     </xs:complexType>
   </xs:element>
-
-  <xs:simpleType name="nonEmptyString">
-    <xs:restriction base="xs:string">
-      <xs:minLength value="1"/>
-    </xs:restriction>
-  </xs:simpleType>
 
   <xs:simpleType name="passwordKeySourceType">
     <xs:restriction base="xs:string">
