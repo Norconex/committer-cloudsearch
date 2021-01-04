@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- 
-   Copyright 2017 Norconex Inc.
+   Copyright 2017-2021 Norconex Inc.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,38 +15,26 @@
    limitations under the License.
 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-
-  <xs:include schemaLocation="/com/norconex/committer/core/AbstractMappedCommitter.xsd"></xs:include>
+  <xs:include schemaLocation="/com/norconex/commons/lang/net/ProxySettings.xsd"></xs:include>
+  <xs:include schemaLocation="/com/norconex/committer/core3/batch/AbstractBatchCommitter.xsd"></xs:include>
   
   <xs:element name="committer">
     <xs:complexType>
       <xs:complexContent> 
-        <xs:extension base="AbstractMappedCommitter">
+        <xs:extension base="AbstractBatchCommitter">
           <xs:all>
             <xs:element name="serviceEndpoint" type="xs:string" minOccurs="1" maxOccurs="1" />
             <xs:element name="signingRegion" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element name="accessKey" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element name="secretKey" type="xs:string" minOccurs="0" maxOccurs="1" />
             <xs:element name="fixBadIds" type="xs:boolean" minOccurs="0" maxOccurs="1" />
-            <xs:element name="proxyHost" type="xs:string" minOccurs="0" maxOccurs="1" />
-            <xs:element name="proxyPort" type="xs:int" minOccurs="0" maxOccurs="1" />
-            <xs:element name="proxyUsername" type="xs:string" minOccurs="0" maxOccurs="1" />
-            <xs:element name="proxyPassword" type="xs:string" minOccurs="0" maxOccurs="1" />
-            <xs:element name="proxyPasswordKey" type="xs:string" minOccurs="0" maxOccurs="1"/>
-            <xs:element name="proxyPasswordKeySource" type="passwordKeySourceType" minOccurs="0" maxOccurs="1"/>
+            <xs:element ref="proxySettings" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="sourceIdField" type="xs:string" minOccurs="0" maxOccurs="1" />
+            <xs:element name="targetContentField" type="xs:string" minOccurs="0" maxOccurs="1" />
           </xs:all>
         </xs:extension> 
       </xs:complexContent>
     </xs:complexType>
   </xs:element>
-
-  <xs:simpleType name="passwordKeySourceType">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="key"/>
-      <xs:enumeration value="file"/>
-      <xs:enumeration value="environment"/>
-      <xs:enumeration value="property"/>
-    </xs:restriction>
-  </xs:simpleType>
 
 </xs:schema>

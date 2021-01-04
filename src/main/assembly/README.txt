@@ -1,5 +1,5 @@
 Norconex CloudSearch Committer
-Copyright 2016-2020 Norconex Inc.
+Copyright 2016-2021 Norconex Inc.
 
 General Information:
 ====================
