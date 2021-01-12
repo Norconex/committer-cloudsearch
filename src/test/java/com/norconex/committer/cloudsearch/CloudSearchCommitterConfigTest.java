@@ -31,10 +31,10 @@ import com.norconex.commons.lang.xml.XML;
 /**
  * @author Pascal Essiembre
  */
-public class CloudSearchCommitterConfigTest {
+class CloudSearchCommitterConfigTest {
 
     @Test
-    public void testWriteRead() throws IOException {
+    void testWriteRead() throws IOException {
         CloudSearchCommitter c = new CloudSearchCommitter();
         c.setAccessKey("accessKey");
         c.setSecretKey("secretKey");
@@ -70,7 +70,7 @@ public class CloudSearchCommitterConfigTest {
     }
 
     @Test
-    public void testValidation() {
+    void testValidation() {
         Assertions.assertDoesNotThrow(() -> {
             try (Reader r = ResourceLoader.getXmlReader(this.getClass())) {
                 XML xml = XML.of(r).create();
