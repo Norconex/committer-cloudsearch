@@ -64,7 +64,7 @@ import com.norconex.commons.lang.xml.XML;
  * <p>
  * Commits documents to Amazon CloudSearch.
  * </p>
- * <h3>Authentication:</h3>
+ * <h2>Authentication:</h2>
  * <p>
  * An access key and security key are required to connect to and interact with
  * CloudSearch. For enhanced security, it is best to use one of the methods
@@ -73,7 +73,7 @@ import com.norconex.commons.lang.xml.XML;
  * Do not explicitly set "accessKey" and "secretKey" on this class if you
  * want to rely on safer methods.
  * </p>
- * <h3>CloudSearch ID limitations:</h3>
+ * <h2>CloudSearch ID limitations:</h2>
  * <p>
  * As of this writing, CloudSearch has a 128 characters length limitation
  * on its "id" field. In addition, certain characters are not allowed.
@@ -182,13 +182,24 @@ public class CloudSearchCommitter extends AbstractBatchCommitter {
     private String sourceIdField;
     private String targetContentField = DEFAULT_COULDSEARCH_CONTENT_FIELD;
 
+    /** Creates a new CloudSearch committer with no configuration. */
     public CloudSearchCommitter() {
         this(null);
     }
+    /**
+     * Creates a new CloudSearch committer with the given service endpoint.
+     * @param serviceEndpoint CloudSearch service endpoint
+     */
     public CloudSearchCommitter(String serviceEndpoint) {
         this(serviceEndpoint, null);
     }
 
+    /**
+     * Creates a new CloudSearch committer with the given service endpoint
+     * and signing region.
+     * @param serviceEndpoint CloudSearch service endpoint
+     * @param signingRegion AWS signing region
+     */
     public CloudSearchCommitter(String serviceEndpoint, String signingRegion) {
         super();
         this.serviceEndpoint = serviceEndpoint;
@@ -321,9 +332,17 @@ public class CloudSearchCommitter extends AbstractBatchCommitter {
         this.fixBadIds = fixBadIds;
     }
 
+    /**
+     * Gets the proxy settings.
+     * @return proxy settings
+     */
     public ProxySettings getProxySettings() {
         return proxySettings;
     }
+    /**
+     * Sets the proxy settings.
+     * @param proxy proxy settings
+     */
     public void setProxySettings(ProxySettings proxy) {
         this.proxySettings.copyFrom(proxy);
     }
