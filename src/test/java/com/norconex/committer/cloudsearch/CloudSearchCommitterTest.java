@@ -17,6 +17,7 @@ package com.norconex.committer.cloudsearch;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.commons.io.IOUtils.toInputStream;
 import static org.apache.commons.lang3.StringUtils.appendIfMissing;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
@@ -65,14 +66,13 @@ class CloudSearchCommitterTest {
     private static final Logger LOG = LoggerFactory.getLogger(
             CloudSearchCommitterTest.class);
 
-    //TODO test update/delete URL params
-    //TODO test source + target mappings + other mappings
+    // TODO test update/delete URL params
+    // TODO test source + target mappings + other mappings
 
     private static final String TEST_ID = "3";
     private static final String TEST_CONTENT = "This is test content.";
 
-    private static final String CLOUDSEARCH_ENDPOINT =
-            appendIfMissing(System.getProperty("cloudsearch.endpoint"), "/");
+    private static final String CLOUDSEARCH_ENDPOINT = appendIfMissing(System.getProperty("cloudsearch.endpoint"), "/");
 
     @TempDir
     static File tempDir;
@@ -81,6 +81,7 @@ class CloudSearchCommitterTest {
     void beforeEach() throws Exception {
         httpDelete("dev/documents");
     }
+
     @AfterAll
     void afterAll() throws Exception {
         httpDelete("dev/documents");
@@ -89,53 +90,53 @@ class CloudSearchCommitterTest {
     @Test
     void testCommitAdd() throws Exception {
         // Add new doc to CloudSearch
-        withinCommitterSession(c -> {
+        assertDoesNotThrow(() -> withinCommitterSession(c -> {
             c.upsert(upsertRequest(TEST_ID, TEST_CONTENT));
-        });
+        }));
         List<JSONObject> docs = getAllDocs();
         assertEquals(1, docs.size());
         assertTestDoc(docs.get(0));
     }
 
     @Test
-    void testAddWithQueueContaining2documents() throws Exception{
-        withinCommitterSession(c -> {
+    void testAddWithQueueContaining2documents() throws Exception {
+        assertDoesNotThrow(() -> withinCommitterSession(c -> {
             c.upsert(upsertRequest("1", "Document 1"));
             c.upsert(upsertRequest("2", "Document 2"));
-        });
+        }));
 
-        //Check that there is 2 documents in CloudSearch
+        // Check that there is 2 documents in CloudSearch
         Assertions.assertEquals(2, getAllDocs().size());
     }
 
     @Test
     void testCommitQueueWith3AddCommandAnd1DeleteCommand()
-            throws Exception{
+            throws Exception {
 
-        withinCommitterSession(c -> {
+        assertDoesNotThrow(() -> withinCommitterSession(c -> {
             c.upsert(upsertRequest("1", "Document 1"));
             c.upsert(upsertRequest("2", "Document 2"));
             c.delete(new DeleteRequest("1", new Properties()));
             c.upsert(upsertRequest("3", "Document 3"));
-        });
+        }));
 
-        //Check that there are 2 documents in CloudSearch
+        // Check that there are 2 documents in CloudSearch
         Assertions.assertEquals(2, getAllDocs().size());
     }
 
     @Test
     void testCommitQueueWith3AddCommandAnd2DeleteCommand()
-            throws Exception{
+            throws Exception {
 
-        withinCommitterSession(c -> {
+        assertDoesNotThrow(() -> withinCommitterSession(c -> {
             c.upsert(upsertRequest("1", "Document 1"));
             c.upsert(upsertRequest("2", "Document 2"));
             c.delete(new DeleteRequest("1", new Properties()));
             c.delete(new DeleteRequest("2", new Properties()));
             c.upsert(upsertRequest("3", "Document 3"));
-        });
+        }));
 
-        //Check that there is 1 documents in CloudSearch
+        // Check that there is 1 documents in CloudSearch
         Assertions.assertEquals(1, getAllDocs().size());
     }
 
@@ -143,19 +144,18 @@ class CloudSearchCommitterTest {
     void testCommitDelete() throws Exception {
 
         // Add a document
-        withinCommitterSession(c -> {
+        assertDoesNotThrow(() -> withinCommitterSession(c -> {
             c.upsert(upsertRequest("1", "Document 1"));
-        });
+        }));
 
         // Delete it in a new session.
-        withinCommitterSession(c -> {
+        assertDoesNotThrow(() -> withinCommitterSession(c -> {
             c.delete(new DeleteRequest("1", new Properties()));
-        });
+        }));
 
         // Check that it's remove from CloudSearch
         Assertions.assertEquals(0, getAllDocs().size());
     }
-
 
     @Test
     void testMultiValueFields() throws Exception {
@@ -163,9 +163,9 @@ class CloudSearchCommitterTest {
         String fieldname = "MULTI"; // (CloudSearch saves as uppercase by default)
         metadata.set(fieldname, "1", "2", "3");
 
-        withinCommitterSession(c -> {
+        assertDoesNotThrow(() -> withinCommitterSession(c -> {
             c.upsert(upsertRequest(TEST_ID, null, metadata));
-        });
+        }));
 
         // Check that it's in CloudSearch
         List<JSONObject> docs = getAllDocs();
@@ -181,11 +181,13 @@ class CloudSearchCommitterTest {
     private UpsertRequest upsertRequest(String id, String content) {
         return upsertRequest(id, content, null);
     }
+
     private UpsertRequest upsertRequest(
             String id, String content, Properties metadata) {
         Properties p = metadata == null ? new Properties() : metadata;
         return new UpsertRequest(id, p, content == null
-                ? new NullInputStream(0) : toInputStream(content, UTF_8));
+                ? new NullInputStream(0)
+                : toInputStream(content, UTF_8));
     }
 
     private void assertTestDoc(JSONObject doc) throws RetriableException {
@@ -193,6 +195,7 @@ class CloudSearchCommitterTest {
         assertEquals(TEST_CONTENT,
                 doc.getJSONObject("fields").getString("content"));
     }
+
     private List<JSONObject> getAllDocs() {
         String response = httpGET("dev/documents");
         LOG.debug("CloudSearch getAllDocs() response: {}", response);
